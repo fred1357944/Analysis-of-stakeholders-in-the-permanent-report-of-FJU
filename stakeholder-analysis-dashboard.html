@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>利害關係人議題重要性分析</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            background-color: #e0e0e0;
+            color: #666;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button:hover {
+            background-color: #d0d0d0;
+        }
+        
+        .tab-button.active {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            transition: transform 0.2s ease;
+        }
+        
+        .chart-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+        
+        .chart-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+        
+        #heatmapDiv {
+            height: 600px;
+        }
+        
+        .summary-table {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .metric {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .high-score {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .medium-score {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .low-score {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .insight-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .insight-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        
+        .insight-card p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .special-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        
+        .special-note h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        .special-note ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .special-note li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 利害關係人議題重要性分析儀表板</h1>
+        
+        <div class="tab-container">
+            <button class="tab-button active" onclick="showTab(event, 'overview')">總覽分析</button>
+            <button class="tab-button" onclick="showTab(event, 'heatmap')">熱力圖</button>
+            <button class="tab-button" onclick="showTab(event, 'comparison')">比較分析</button>
+            <button class="tab-button" onclick="showTab(event, 'summary')">關鍵洞察</button>
+        </div>
+
+        <div id="overview" class="tab-content active">
+            <div class="special-note">
+                <h4>⚠️ 特殊說明</h4>
+                <ul>
+                    <li><strong>企業雇主</strong>：評分集中3.0-4.0，差距僅1分，無明顯優先議題</li>
+                    <li><strong>供應商/承攬商</strong>：幾乎全給5分，顯示全面高度重視，無排名意義</li>
+                    <li><strong>政府組織</strong>：評分介於3.0-4.0，差距不大，重視整體均衡表現</li>
+                    <li><strong>媒體</strong>：所有議題均為5分，顯示全面高度重視，無需列排名</li>
+                </ul>
+            </div>
+            
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">各利害關係人最高分數比較</div>
+                    <div id="topScoresChart"></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">跨利害關係人共同關注議題（前5名）</div>
+                    <div id="commonIssuesChart"></div>
+                </div>
+            </div>
+            
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <h3>🎯 最受關注議題</h3>
+                    <p>「教學品質保證與管理」被6個利害關係人列為前三重要議題</p>
+                </div>
+                <div class="insight-card">
+                    <h3>💻 新興關注重點</h3>
+                    <p>「網路資源分享與資訊安全保障」成為多個群體的新關注焦點</p>
+                </div>
+                <div class="insight-card">
+                    <h3>🏆 聲譽與形象</h3>
+                    <p>「學校聲譽」成為校友與媒體最關注的核心議題</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="heatmap" class="tab-content">
+            <div class="chart-container">
+                <div class="chart-title">利害關係人議題重要性熱力圖</div>
+                <div id="heatmapDiv"></div>
+            </div>
+        </div>
+
+        <div id="comparison" class="tab-content">
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <div class="chart-title">核心利害關係人關注面向雷達圖</div>
+                    <div id="radarChart"></div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">議題評分分布統計</div>
+                    <div id="distributionChart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="summary" class="tab-content">
+            <div class="summary-table">
+                <h2 style="color: #2c3e50; margin-bottom: 20px;">📋 利害關係人關鍵洞察總覽</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>利害關係人</th>
+                            <th>第一重要議題</th>
+                            <th>分數</th>
+                            <th>第二重要議題</th>
+                            <th>分數</th>
+                            <th>第三重要議題</th>
+                            <th>分數</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 更新後的資料定義
+        const stakeholderData = {
+            '在校生及家長': {
+                topIssues: [
+                    {name: '教學品質保證與管理', score: 4.35},
+                    {name: '學生學習成效', score: 4.24},
+                    {name: '跨領域課程規劃與創新教學', score: 4.23}
+                ]
+            },
+            '行政長官': {
+                topIssues: [
+                    {name: '教學品質保證與管理', score: 4.89},
+                    {name: '學生學習成效', score: 4.89},
+                    {name: '網路資源分享與資訊安全保障', score: 4.89}
+                ]
+            },
+            '其他': {
+                topIssues: [
+                    {name: '網路資源分享與資訊安全保障', score: 4.67},
+                    {name: '校園與社區衛生、安全與環境保護', score: 4.67},
+                    {name: '廢棄物管理', score: 4.67}
+                ]
+            },
+            '社區民眾': {
+                topIssues: [
+                    {name: '工作多樣性、機會及薪資平等', score: 4.67},
+                    {name: '廢棄物管理', score: 4.33},
+                    {name: '勞動環境品質與吸引力', score: 4.33}
+                ]
+            },
+            '校友': {
+                topIssues: [
+                    {name: '學校聲譽', score: 4.55},
+                    {name: '網路資源分享與資訊安全保障', score: 4.42},
+                    {name: '學校永續治理、倡議與未來發展藍圖', score: 4.40}
+                ]
+            },
+            '教職員工': {
+                topIssues: [
+                    {name: '就學資源與輔導措施', score: 4.47},
+                    {name: '教學品質保證與管理', score: 4.45},
+                    {name: '勞動環境品質與吸引力', score: 4.42}
+                ]
+            },
+            '夥伴高中職': {
+                topIssues: [
+                    {name: '跨領域課程規劃與創新教學', score: 4.50},
+                    {name: '教學品質保證與管理', score: 4.00},
+                    {name: '學校聲譽', score: 4.00}
+                ]
+            }
+        };
+
+        // 特殊利害關係人說明
+        const specialStakeholders = {
+            '企業雇主': {
+                description: '評分集中3.0-4.0，差距僅1分，無明顯優先議題',
+                averageScore: 3.5
+            },
+            '供應商/承攬商': {
+                description: '幾乎全給5分，顯示全面高度重視，無排名意義',
+                averageScore: 5.0
+            },
+            '政府組織': {
+                description: '評分介於3.0-4.0，差距不大，重視整體均衡表現',
+                averageScore: 3.5
+            },
+            '媒體': {
+                description: '所有議題均為5分，顯示全面高度重視，無需列排名',
+                averageScore: 5.0
+            }
+        };
+
+        // Tab切換功能
+        function showTab(event, tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            const buttons = document.querySelectorAll('.tab-button');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            buttons.forEach(button => button.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 1. 各利害關係人最高分數圖表
+        function createTopScoresChart() {
+            const allStakeholders = [...Object.keys(stakeholderData), ...Object.keys(specialStakeholders)];
+            const scores = [];
+            const colors = [];
+            const hoverText = [];
+            
+            allStakeholders.forEach(stakeholder => {
+                if (stakeholderData[stakeholder]) {
+                    const maxScore = Math.max(...stakeholderData[stakeholder].topIssues.map(issue => issue.score));
+                    scores.push(maxScore);
+                    colors.push('#36A2EB');
+                    hoverText.push(`${stakeholder}<br>最高分: ${maxScore.toFixed(2)}`);
+                } else {
+                    scores.push(specialStakeholders[stakeholder].averageScore);
+                    colors.push('#FFB86C');
+                    hoverText.push(`${stakeholder}<br>${specialStakeholders[stakeholder].description}`);
+                }
+            });
+            
+            const trace = {
+                x: allStakeholders,
+                y: scores,
+                type: 'bar',
+                marker: {
+                    color: colors
+                },
+                text: scores.map(score => score.toFixed(2)),
+                textposition: 'outside',
+                hovertext: hoverText,
+                hoverinfo: 'text'
+            };
+            
+            const layout = {
+                height: 400,
+                margin: { t: 40, b: 120, l: 60, r: 40 },
+                xaxis: {
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: '分數',
+                    range: [0, 5.5]
+                },
+                showlegend: false
+            };
+            
+            Plotly.newPlot('topScoresChart', [trace], layout, {responsive: true});
+        }
+
+        // 2. 共同關注議題分析
+        function createCommonIssuesChart() {
+            const issueCount = {};
+            
+            Object.values(stakeholderData).forEach(data => {
+                data.topIssues.forEach(issue => {
+                    if (!issueCount[issue.name]) {
+                        issueCount[issue.name] = 0;
+                    }
+                    issueCount[issue.name]++;
+                });
+            });
+            
+            const sortedIssues = Object.entries(issueCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const trace = {
+                x: sortedIssues.map(item => item[1]),
+                y: sortedIssues.map(item => item[0]),
+                type: 'bar',
+                orientation: 'h',
+                marker: {
+                    color: '#36A2EB'
+                },
+                text: sortedIssues.map(item => item[1]),
+                textposition: 'outside',
+                hovertemplate: '%{y}<br>次數: %{x}<extra></extra>'
+            };
+            
+            const layout = {
+                height: 400,
+                margin: { t: 40, b: 60, l: 300, r: 60 },
+                xaxis: {
+                    title: '被列為前三重要的次數',
+                    range: [0, Math.max(...sortedIssues.map(item => item[1])) + 1]
+                },
+                yaxis: {
+                    automargin: true
+                }
+            };
+            
+            Plotly.newPlot('commonIssuesChart', [trace], layout, {responsive: true});
+        }
+
+        // 3. 熱力圖
+        function createHeatmap() {
+            // 收集所有出現的議題
+            const allIssues = new Set();
+            Object.values(stakeholderData).forEach(data => {
+                data.topIssues.forEach(issue => allIssues.add(issue.name));
+            });
+            
+            const issues = Array.from(allIssues);
+            const stakeholders = Object.keys(stakeholderData);
+            
+            // 建立矩陣數據
+            const z = [];
+            const text = [];
+            
+            for (let i = 0; i < stakeholders.length; i++) {
+                const row = [];
+                const textRow = [];
+                for (let j = 0; j < issues.length; j++) {
+                    const issue = stakeholderData[stakeholders[i]].topIssues.find(
+                        item => item.name === issues[j]
+                    );
+                    const score = issue ? issue.score : 0;
+                    row.push(score);
+                    textRow.push(score > 0 ? score.toFixed(2) : '');
+                }
+                z.push(row);
+                text.push(textRow);
+            }
+            
+            const trace = {
+                type: 'heatmap',
+                z: z,
+                x: issues,
+                y: stakeholders,
+                text: text,
+                texttemplate: '%{text}',
+                textfont: {
+                    size: 12,
+                    color: 'white'
+                },
+                colorscale: [
+                    [0, '#ffffff'],
+                    [0.2, '#e8f4f8'],
+                    [0.4, '#90cdf4'],
+                    [0.6, '#3b82f6'],
+                    [0.8, '#1e40af'],
+                    [1, '#1e3a8a']
+                ],
+                showscale: true,
+                colorbar: {
+                    title: '重要性分數',
+                    titleside: 'right',
+                    tickmode: 'linear',
+                    tick0: 0,
+                    dtick: 1
+                },
+                hovertemplate: '利害關係人: %{y}<br>議題: %{x}<br>分數: %{z}<extra></extra>'
+            };
+            
+            const layout = {
+                height: 600,
+                xaxis: {
+                    tickangle: -45,
+                    side: 'bottom',
+                    tickfont: {
+                        size: 11
+                    }
+                },
+                yaxis: {
+                    tickfont: {
+                        size: 12
+                    }
+                },
+                margin: {
+                    l: 150,
+                    r: 80,
+                    b: 250,
+                    t: 20
+                }
+            };
+            
+            Plotly.newPlot('heatmapDiv', [trace], layout, {responsive: true});
+        }
+
+        // 4. 雷達圖
+        function createRadarChart() {
+            // 定義關鍵維度
+            const dimensions = [
+                '教學品質',
+                '學習成效', 
+                '資訊安全',
+                '環境永續',
+                '勞動環境',
+                '學校聲譽'
+            ];
+            
+            // 選擇代表性利害關係人（排除特殊說明的四個）
+            const selectedStakeholders = ['在校生及家長', '校友', '教職員工', '行政長官', '夥伴高中職'];
+            
+            const traces = selectedStakeholders.map((stakeholder, index) => {
+                // 計算每個維度的分數
+                const scores = dimensions.map(dim => {
+                    const relevantIssues = stakeholderData[stakeholder].topIssues.filter(issue => {
+                        if (dim === '教學品質') return issue.name.includes('教學品質') || issue.name.includes('教學');
+                        if (dim === '學習成效') return issue.name.includes('學習成效') || issue.name.includes('學生');
+                        if (dim === '資訊安全') return issue.name.includes('網路資源') || issue.name.includes('資訊安全');
+                        if (dim === '環境永續') return issue.name.includes('永續') || issue.name.includes('廢棄物') || issue.name.includes('環境');
+                        if (dim === '勞動環境') return issue.name.includes('勞動環境') || issue.name.includes('工作');
+                        if (dim === '學校聲譽') return issue.name.includes('聲譽');
+                        return false;
+                    });
+                    
+                    if (relevantIssues.length > 0) {
+                        return relevantIssues.reduce((sum, issue) => sum + issue.score, 0) / relevantIssues.length;
+                    }
+                    return 3.5; // 預設值
+                });
+                
+                // 閉合圖形
+                scores.push(scores[0]);
+                const dimensionsClosed = [...dimensions, dimensions[0]];
+                
+                return {
+                    type: 'scatterpolar',
+                    r: scores,
+                    theta: dimensionsClosed,
+                    fill: 'toself',
+                    name: stakeholder,
+                    opacity: 0.6
+                };
+            });
+            
+            const layout = {
+                height: 400,
+                polar: {
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 5]
+                    }
+                },
+                showlegend: true,
+                legend: {
+                    orientation: 'v',
+                    x: 1.05,
+                    y: 0.5
+                }
+            };
+            
+            Plotly.newPlot('radarChart', traces, layout, {responsive: true});
+        }
+
+        // 5. 分布圖
+        function createDistributionChart() {
+            // 收集所有分數
+            const allScores = [];
+            Object.values(stakeholderData).forEach(data => {
+                data.topIssues.forEach(issue => allScores.push(issue.score));
+            });
+            
+            // 計算分數區間
+            const ranges = {
+                '5.0 (滿分)': 0,
+                '4.5-4.9': 0,
+                '4.0-4.4': 0,
+                '3.5-3.9': 0,
+                '3.0-3.4': 0
+            };
+            
+            allScores.forEach(score => {
+                if (score === 5.0) ranges['5.0 (滿分)']++;
+                else if (score >= 4.5) ranges['4.5-4.9']++;
+                else if (score >= 4.0) ranges['4.0-4.4']++;
+                else if (score >= 3.5) ranges['3.5-3.9']++;
+                else if (score >= 3.0) ranges['3.0-3.4']++;
+            });
+            
+            const trace = {
+                labels: Object.keys(ranges),
+                values: Object.values(ranges),
+                type: 'pie',
+                hole: 0.4,
+                marker: {
+                    colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                },
+                textposition: 'inside',
+                textinfo: 'label+percent',
+                hovertemplate: '%{label}<br>數量: %{value}<br>佔比: %{percent}<extra></extra>'
+            };
+            
+            const layout = {
+                height: 400,
+                showlegend: true,
+                legend: {
+                    orientation: 'v',
+                    x: 1.05,
+                    y: 0.5
+                }
+            };
+            
+            Plotly.newPlot('distributionChart', [trace], layout, {responsive: true});
+        }
+
+        // 6. 摘要表格
+        function createSummaryTable() {
+            const tbody = document.getElementById('summaryTableBody');
+            tbody.innerHTML = '';
+            
+            // 處理有詳細資料的利害關係人
+            Object.entries(stakeholderData).forEach(([stakeholder, data]) => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td><strong>${stakeholder}</strong></td>
+                    <td>${data.topIssues[0].name}</td>
+                    <td><span class="metric ${getScoreClass(data.topIssues[0].score)}">${data.topIssues[0].score.toFixed(2)}</span></td>
+                    <td>${data.topIssues[1].name}</td>
+                    <td><span class="metric ${getScoreClass(data.topIssues[1].score)}">${data.topIssues[1].score.toFixed(2)}</span></td>
+                    <td>${data.topIssues[2].name}</td>
+                    <td><span class="metric ${getScoreClass(data.topIssues[2].score)}">${data.topIssues[2].score.toFixed(2)}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // 處理特殊利害關係人
+            Object.entries(specialStakeholders).forEach(([stakeholder, info]) => {
+                const row = document.createElement('tr');
+                row.style.backgroundColor = '#f9f9f9';
+                
+                row.innerHTML = `
+                    <td><strong>${stakeholder}</strong></td>
+                    <td colspan="6" style="text-align: center; font-style: italic;">${info.description}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getScoreClass(score) {
+            if (score >= 4.5) return 'high-score';
+            if (score >= 4.0) return 'medium-score';
+            return 'low-score';
+        }
+
+        // 初始化所有圖表
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                createTopScoresChart();
+                createCommonIssuesChart();
+                createHeatmap();
+                createRadarChart();
+                createDistributionChart();
+                createSummaryTable();
+            }, 100);
+        });
+    </script>
+</body>
+</html>
